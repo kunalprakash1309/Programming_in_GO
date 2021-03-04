@@ -1,6 +1,80 @@
 package main
 
-import "sort"
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+const (
+	pageTop    = `<!DOCTYPE HTML><html><head>
+<style>.error{color:#FF0000;}</style></head><title>Statistics</title>
+<body><h3>Statistics</h3>
+<p>Computes basic statistics for a given list of numbers</p>`
+	form = `<form action="/" method="POST">
+<label for="numbers">Numbers (comma or space-separated):</label><br />
+<input type="text" name="numbers" size="30"><br />
+<input type="submit" value="Calculate">
+</form>`
+	pageBottom = `</body></html>`
+	anError    = `<p class="error">%s</p>`
+)
+
+func main() {
+    http.HandleFunc("/", homePage)
+    if err := http.ListenAndServe(":8000", nil); err != nil {
+        log.Fatal("failed to start server", err)
+    }
+}
+
+func homePage(w http.ResponseWriter, r *http.Request) {
+
+	err := r.ParseForm()
+	fmt.Fprint(w, pageTop, form)
+	if err != nil {
+		fmt.Fprint(w, anError, err)
+	} else {
+		if numbers, message, ok := processRequest(r); ok {
+			stats := getStats(numbers)
+			fmt.Fprint(w, formatStats(stats))
+		} else if message != "" {
+			fmt.Fprintf(w, anError, message)
+		}
+	}
+	fmt.Fprint(w, pageBottom)
+}
+
+func processRequest(r *http.Request) ([]float64, string, bool) {
+	var numbers []float64
+	if slice, found := r.Form["numbers"]; found && len(slice)>0 {
+		text := strings.Replace(slice[0], ",", " ", -1)
+		for _, field := range strings.Fields(text) {
+			if x, err := strconv.ParseFloat(field, 64); err != nil {
+				return numbers, " ' " + field + " ' is invalid", false
+			} else {
+				numbers = append(numbers, x)
+			}
+		}
+	}
+	if len(numbers) == 0 {
+		return numbers, "", false
+	}
+	return numbers, "", true
+}
+
+func formatStats(stats statistics) string {
+	return fmt.Sprintf(`<table border="1">
+	<tr><th colspan="2">Results</th></tr>
+	<tr><td>Numbers</td><td>%v</td></tr>
+	<tr><td>Count</td><td>%d</td></tr>
+	<tr><td>Mean</td><td>%f</td></tr>
+	<tr><td>Median</td><td>%f</td></tr>
+	</table>`,stats.numbers, len(stats.numbers), stats.mean, stats.median)
+}
+
 
 type statistics struct {
 	numbers []float64
@@ -20,20 +94,14 @@ func sum(numbers []float64) (total float64) {
 	for _, v := range numbers {
 		total += v
 	}
-	return
+	return total
 }
 
-func median(numbers []float64) (median float64) {
-
-	if len(numbers) % 2 != 0 {
-		median = numbers[len(numbers) + 1]
-	} else {
-		median = numbers[len(numbers)] + numbers[len(numbers) - 1]
+func median(numbers []float64) float64 {
+	middle := len(numbers) / 2
+	result := numbers[middle]
+	if len(numbers)%2 == 0 {
+		result = (result + numbers[middle-1]) / 2
 	}
-
-	return median 
-}
-
-func main() {
-
+	return result 
 }
