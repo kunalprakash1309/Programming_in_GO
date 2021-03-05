@@ -74,7 +74,7 @@ func formatStats(stats statistics) string {
 	<tr><td>Mean</td><td>%f</td></tr>
 	<tr><td>Median</td><td>%f</td></tr>
 	<tr><td>Stand. Deviation</td><td>%f</td></tr>
-	<tr><td>Mode</td><td>%f</td></tr>
+	<tr><td>Mode</td><td>%.2f</td></tr>
 	</table>`,stats.numbers, len(stats.numbers), stats.mean, stats.median, stats.stdDev, stats.mode)
 }
 
@@ -93,6 +93,7 @@ func getStats(numbers []float64) (stats statistics) {
 	stats.mean = sum(numbers) / float64(len(numbers))
 	stats.median = median(numbers)
 	stats.stdDev = standardDeviation(numbers, stats.mean)
+	stats.mode = calculateMode(numbers)
 	return stats
 }
 
@@ -119,6 +120,30 @@ func standardDeviation(numbers []float64, mean float64) (result float64) {
 		
 		total += (math.Pow((value-mean), 2)) / (n-1)
 		result = math.Sqrt(total)
+	}
+	return result
+}
+
+func calculateMode(numbers []float64) []float64 {
+	var max int
+	var result []float64
+	numberCount := make(map[float64]int)
+	for _, v := range numbers {
+		numberCount[v]++
+	}
+	
+	for _, value := range numberCount {
+		if value > max {
+			max = value
+		}
+	}
+	if max == 1 {
+		return []float64{}
+	}
+	for key, value := range numberCount {
+		if value == max {
+			result = append(result, key)
+		}
 	}
 	return result
 }
